@@ -1,0 +1,18 @@
+/* ✅ Dark mode overrides for react-calendar */
+.react-calendar {
+    background-color: transparent;
+    border: none;
+    color: white;
+  }
+  
+  .react-calendar__tile--active {
+    background-color: #2563eb !important;
+    color: white !important;
+  }
+  
+  .has-event {
+    background-color: #4b5563 !important;
+    border-radius: 0.5rem;
+    color: #fbbf24 !important;
+  }
+  

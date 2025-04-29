@@ -1,30 +1,22 @@
-// ✅ app/dashboard/page.js
 "use client";
-import { useSession } from "next-auth/react";
-import Link from "next/link";
+
+import CalendarWidget from "@/components/CalendarWidget";
+import ChatBox from "@/components/ChatBox";
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
-
   return (
-    <main className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">
-        Welcome {session?.user?.name || "Guest"}
-      </h1>
-      <nav className="space-x-4">
-        <Link href="/calendar" className="text-blue-600 hover:underline">
-          Calendar
-        </Link>
-        <Link href="/chat" className="text-blue-600 hover:underline">
-          AI Chat
-        </Link>
-        <Link href="/email" className="text-blue-600 hover:underline">
-          Email
-        </Link>
-        <Link href="/contacts" className="text-blue-600 hover:underline">
-          Contacts
-        </Link>
-      </nav>
-    </main>
+    <div className="min-h-screen bg-[#0d1117] text-white p-4 flex flex-col lg:flex-row gap-4">
+      {/* Left 2/3 - Calendar */}
+      <div className="lg:w-2/3 w-full bg-[#161b22] rounded-xl p-4 shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">📅 My Calendar</h2>
+        <CalendarWidget />
+      </div>
+
+      {/* Right 1/3 - Assistant */}
+      <div className="lg:w-1/3 w-full bg-[#161b22] rounded-xl p-4 shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">🤖 Assistant</h2>
+        <ChatBox />
+      </div>
+    </div>
   );
 }
