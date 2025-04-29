@@ -1,0 +1,99 @@
+/* ChatBox.module.css (Dark Mode) */
+.chatContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 100vh;
+    border: 1px solid #2e2e3e;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1e1e2e;
+  }
+  
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #2e2e3e;
+    background-color: #2e2e3e;
+  }
+  
+  .toolbar button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3b82f6;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .toolbar button:hover {
+    background-color: #2563eb;
+  }
+  
+  .messages {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    background-color: #252535;
+  }
+  
+  .userMsg {
+    align-self: flex-end;
+    background-color: #3b82f6;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    max-width: 75%;
+    word-wrap: break-word;
+  }
+  
+  .assistantMsg {
+    align-self: flex-start;
+    background-color: #3c3c4a;
+    color: #e5e5e5;
+    padding: 8px 12px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    max-width: 75%;
+    word-wrap: break-word;
+  }
+  
+  .inputRow {
+    display: flex;
+    padding: 8px;
+    border-top: 1px solid #2e2e3e;
+    background-color: #2e2e3e;
+  }
+  
+  .inputRow input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #3c3c4a;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-right: 8px;
+    background-color: #3c3c4a;
+    color: #e5e5e5;
+  }
+  
+  .inputRow input::placeholder {
+    color: #7e7e88;
+  }
+  
+  .inputRow button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #10b981;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .inputRow button:hover {
+    background-color: #059669;
+  }
+  
