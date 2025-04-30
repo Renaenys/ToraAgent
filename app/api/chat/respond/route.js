@@ -1,86 +1,63 @@
-import { getToken } from "next-auth/jwt";
-import { chat } from "@/lib/langchain";
+// app/api/chat/respond/route.js
 import dbConnect from "@/lib/dbConnect";
 import ChatHistory from "@/models/ChatHistory";
-import User from "@/models/User";
-import { v4 as uuidv4 } from "uuid"; // ✅ Install UUID npm package
+import { NextResponse } from "next/server";
+import OpenAI from "openai";
 
-const secret = process.env.NEXTAUTH_SECRET;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const token = await getToken({ req, secret });
-    if (!token) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { prompt, sessionId: incomingSessionId } = await req.json(); // ✅ Also receive sessionId
-
+    // 1️⃣ Connect to MongoDB
     await dbConnect();
-    const user = await User.findOne({ email: token.email });
-    if (!user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
+
+    // 2️⃣ Parse & validate
+    const { sessionId, prompt } = await request.json();
+    if (!sessionId || !prompt) {
+      return NextResponse.json(
+        { error: "Missing sessionId or prompt" },
+        { status: 400 }
+      );
     }
 
-    let sessionId = incomingSessionId;
-
-    if (!sessionId) {
-      sessionId = uuidv4(); // ✅ Generate new Session ID
+    // 3️⃣ Load or create chat history
+    let chat = await ChatHistory.findOne({ sessionId });
+    if (!chat) {
+      chat = new ChatHistory({ sessionId, messages: [] });
     }
 
-    let chatHistory = await ChatHistory.findOne({
-      userId: user._id,
-      sessionId,
+    // 4️⃣ Append the user’s message
+    chat.messages.push({ role: "user", content: prompt });
+
+    // 5️⃣ Build history for OpenAI
+    const history = chat.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // 6️⃣ Call OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: history,
     });
+    const reply = completion.choices?.[0]?.message?.content;
+    if (!reply) throw new Error("No reply from OpenAI");
 
-    if (!chatHistory) {
-      chatHistory = await ChatHistory.create({
-        userId: user._id,
-        sessionId,
-        messages: [],
-      });
-    }
+    // 7️⃣ Append assistant’s reply
+    chat.messages.push({ role: "assistant", content: reply });
 
-    const limitedMessages = chatHistory.messages.slice(-5);
-    limitedMessages.push({ role: "user", content: prompt });
+    // 8️⃣ Save updated history
+    await chat.save();
 
-    const systemPrompt = `
-You are an assistant that ONLY outputs valid JSON when asked about creating calendar events.
-
-Return ONLY:
-{
-  "title": "",
-  "description": "",
-  "start": "",
-  "end": ""
-}
-Format start/end in ISO datetime.
-Otherwise, answer normally.
-    `;
-
-    const fullPrompt = [
-      { role: "system", content: systemPrompt },
-      ...limitedMessages,
-    ];
-
-    console.log("🧠 Sending prompt to AI:", fullPrompt);
-
-    const aiRes = await chat.call(fullPrompt);
-
-    if (!aiRes || !aiRes.content) {
-      throw new Error("Empty AI response");
-    }
-
-    // Update ChatHistory
-    chatHistory.messages.push(
-      { role: "user", content: prompt },
-      { role: "assistant", content: aiRes.content }
+    // 9️⃣ Return the reply
+    return NextResponse.json({ reply });
+  } catch (err) {
+    console.error("Error in /api/chat/respond:", err);
+    return NextResponse.json(
+      { error: err.message || "Server error" },
+      { status: 500 }
     );
-    await chatHistory.save();
-
-    return Response.json({ reply: aiRes.content, sessionId }); // ✅ Always return current sessionId
-  } catch (error) {
-    console.error("❌ Error in /api/chat/respond:", error);
-    return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
