@@ -5,16 +5,48 @@ import ChatHistory from '@/models/ChatHistory';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getToken } from 'next-auth/jwt';
+import Contact from '@/models/Contact'; // ✅ Make sure this model is available
 
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ✅ Helper: Extract last JSON block
+function extractLastJsonObject(text) {
+	const matches = text.match(/({[\s\S]*?})\s*$/);
+	if (!matches) return null;
+	try {
+		return JSON.parse(matches[1]);
+	} catch {
+		return null;
+	}
+}
+
+// ✅ Helper: Look up contact email from MongoDB
+async function resolveEmail(userId, name) {
+	if (!name) return null;
+
+	const contacts = await Contact.find({
+		userId,
+		name: { $regex: name, $options: 'i' },
+	});
+
+	if (contacts.length === 1) return contacts[0].email;
+
+	// Try exact match fallback
+	const exact = contacts.find(
+		(c) => c.name.toLowerCase() === name.toLowerCase()
+	);
+	if (exact) return exact.email;
+
+	return null; // ambiguous or not found
+}
+
 export async function POST(request) {
 	try {
 		await dbConnect();
 
-		// ✅ 1. Parse request body
+		// ✅ 1. Parse request
 		const { sessionId, prompt } = await request.json();
 		if (!sessionId || !prompt) {
 			return NextResponse.json(
@@ -23,14 +55,14 @@ export async function POST(request) {
 			);
 		}
 
-		// ✅ 2. Validate user session
+		// ✅ 2. Validate token
 		const token = await getToken({ req: request });
 		if (!token || !token.sub) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 		const userId = token.sub;
 
-		// ✅ 3. Load or initialize chat history
+		// ✅ 3. Load chat history
 		let chat = await ChatHistory.findOne({ sessionId });
 		if (!chat) {
 			chat = new ChatHistory({ sessionId, userId, messages: [] });
@@ -40,7 +72,7 @@ export async function POST(request) {
 
 		chat.messages.push({ role: 'user', content: prompt });
 
-		// ✅ 4. System prompt for AI (MCP)
+		// ✅ 4. AI instructions
 		const MCP_PROMPT = {
 			role: 'system',
 			content: `
@@ -89,14 +121,35 @@ Today is ${new Date().toISOString().split('T')[0]}.
 			messages,
 		});
 
-		const reply = completion.choices?.[0]?.message?.content;
+		let reply = completion.choices?.[0]?.message?.content;
 		if (!reply) throw new Error('No reply from OpenAI');
 
-		// ✅ 6. Save assistant message
+		// ✅ 6. Extract JSON block
+		const parsed = extractLastJsonObject(reply);
+
+		// ✅ 7. Patch contact email if needed
+		if (parsed && parsed.to) {
+			// Extract the name part even if AI filled a fake email
+			let namePart = parsed.to.split('@')[0].trim();
+
+			// Try to resolve based on name
+			const emailFromDB = await resolveEmail(userId, namePart);
+
+			if (emailFromDB) {
+				parsed.to = emailFromDB;
+
+				// Remove old JSON from reply
+				reply = reply.replace(/({[\s\S]*?})\s*$/, '');
+
+				// Append corrected JSON
+				reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
+			}
+		}
+
+		// ✅ 8. Save and return
 		chat.messages.push({ role: 'assistant', content: reply });
 		await chat.save();
 
-		// ✅ 7. Return reply
 		return NextResponse.json({ reply });
 	} catch (err) {
 		console.error('❌ Chat API error:', err);

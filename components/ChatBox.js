@@ -8,14 +8,11 @@ import remarkGfm from 'remark-gfm';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { useContactContext } from '@/context/ContactContext';
 import { useCalendarContext } from '@/context/CalendarContext';
-
 import { FiSend } from 'react-icons/fi';
 
-// ✅ FIX: Robustly extract last valid JSON block from message
 function extractLastJsonObject(text) {
 	const matches = text.match(/({[\s\S]*?})\s*$/);
 	if (!matches) return null;
-
 	try {
 		return JSON.parse(matches[1]);
 	} catch {
@@ -28,6 +25,7 @@ export default function ChatBox({ activeSessionId }) {
 	const inputRef = useRef(null);
 	const { triggerRefresh } = useContactContext();
 	const { triggerRefresh: refreshCalendar } = useCalendarContext();
+
 	const [sessionId, setSessionId] = useState(null);
 	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState('');
@@ -61,15 +59,58 @@ export default function ChatBox({ activeSessionId }) {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 	}, [messages]);
 
-	const handleAIResponse = (reply) => {
+	const resolveContactEmail = async (name) => {
+		const res = await fetch('/api/contacts/lookup', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name }),
+		});
+		const data = await res.json();
+
+		if (data?.contacts?.length === 1) {
+			return data.contacts[0].email;
+		}
+
+		if (data?.contacts?.length > 1) {
+			// Optional: prefer exact match if available
+			const exactMatch = data.contacts.find(
+				(c) => c.name.toLowerCase() === name.toLowerCase()
+			);
+			if (exactMatch) return exactMatch.email;
+
+			return {
+				error: `Found ${data.contacts.length} people named "${name}". Please be more specific.`,
+			};
+		}
+
+		return { error: 'No contact found.' };
+	};
+
+	const handleAIResponse = async (reply) => {
 		const parsed = extractLastJsonObject(reply);
+
 		setMessages((m) => {
 			const cleaned = m.filter((msg) => msg.content !== '...');
 			return [...cleaned, { role: 'assistant', content: reply }];
 		});
+
 		setIsLoading(false);
 
 		if (parsed) {
+			// Check if the reply wants to send email with just a name
+			if (parsed.to && !parsed.to.includes('@')) {
+				const contactResult = await resolveContactEmail(parsed.to);
+				if (typeof contactResult === 'string') {
+					parsed.to = contactResult;
+				} else {
+					setMessages((m) => [
+						...m,
+						{ role: 'assistant', content: contactResult.error },
+					]);
+					return;
+				}
+			}
+
 			if (parsed.title && parsed.start && parsed.end) {
 				setModalData({ type: 'event', data: parsed });
 			} else if (parsed.to && parsed.subject && parsed.body) {
@@ -99,7 +140,7 @@ export default function ChatBox({ activeSessionId }) {
 		});
 
 		const data = await res.json();
-		handleAIResponse(data.reply || '');
+		await handleAIResponse(data.reply || '');
 	};
 
 	const handleModalSubmit = async () => {
@@ -114,7 +155,7 @@ export default function ChatBox({ activeSessionId }) {
 		const url = urlMap[modalData.type];
 		const payload = {
 			userEmail: session?.user?.email,
-			sessionId, // ✅ add this line=
+			sessionId,
 			...modalData.data,
 		};
 
@@ -125,14 +166,13 @@ export default function ChatBox({ activeSessionId }) {
 		});
 
 		if (modalData.type === 'contact') triggerRefresh();
-		if (modalData.type === 'event') {
-			refreshCalendar();
-		}
+		if (modalData.type === 'event') refreshCalendar();
 
 		setMessages((m) => [
 			...m,
 			{ role: 'assistant', content: `${modalData.type} confirmed ✅` },
 		]);
+
 		setModalData(null);
 		setIsLoading(false);
 	};
@@ -167,26 +207,23 @@ export default function ChatBox({ activeSessionId }) {
 												</code>
 											);
 										}
-
 										return (
-											<>
-												<div className="relative">
-													<div className="bg-gray-800 p-2 rounded-lg overflow-x-auto">
-														<code {...props}>{children}</code>
-													</div>
-													{typeof window !== 'undefined' &&
-														navigator.clipboard && (
-															<CopyToClipboard
-																text={String(children)}
-																onCopy={() => setCopiedIndex(i)}
-															>
-																<button className="absolute top-2 right-2 text-sm px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">
-																	{copiedIndex === i ? 'Copied' : 'Copy'}
-																</button>
-															</CopyToClipboard>
-														)}
+											<div className="relative">
+												<div className="bg-gray-800 p-2 rounded-lg overflow-x-auto">
+													<code {...props}>{children}</code>
 												</div>
-											</>
+												{typeof window !== 'undefined' &&
+													navigator.clipboard && (
+														<CopyToClipboard
+															text={String(children)}
+															onCopy={() => setCopiedIndex(i)}
+														>
+															<button className="absolute top-2 right-2 text-sm px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">
+																{copiedIndex === i ? 'Copied' : 'Copy'}
+															</button>
+														</CopyToClipboard>
+													)}
+											</div>
 										);
 									},
 								}}
@@ -221,7 +258,6 @@ export default function ChatBox({ activeSessionId }) {
 					placeholder="Type a message..."
 					disabled={isLoading}
 				/>
-
 				<button
 					onClick={handleSend}
 					disabled={isLoading}
