@@ -11,6 +11,7 @@ import { ContactProvider } from '@/context/ContactContext';
 import EmailWidget from '@/components/EmailWidget';
 import { CalendarProvider } from '@/context/CalendarContext';
 
+
 export default function DashboardPage() {
 	const [activeSessionId, setActiveSessionId] = useState(null);
 	const { data: session, status } = useSession();
@@ -28,15 +29,16 @@ export default function DashboardPage() {
 				<div className="h-screen bg-[#0d1117] text-white p-4 flex flex-col lg:flex-row gap-4 max-w-full overflow-x-hidden">
 					<div className="w-full max-w-screen-2xl flex flex-col lg:flex-row gap-4">
 						{/* Left Column */}
-						<div className="flex flex-col gap-4 basis-1/5 min-w-[280px]">
-							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col min-h-[500px]">
+						<div className="flex flex-col gap-4 basis-1/5 min-w-[400px]">
+							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[70%]">
 								<h2 className="text-xl font-semibold mb-4">📅 My Calendar</h2>
 								<CalendarWidget />
 							</div>
+			
 						</div>
 
 						{/* Middle Left */}
-						<div className="flex flex-col gap-4 basis-1/5 min-w-[280px]">
+						<div className="flex flex-col gap-4 basis-1/5 min-w-[400px]">
 							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[50%]">
 								<EmailWidget />
 							</div>
