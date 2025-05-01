@@ -1,25 +1,16 @@
-import dbConnect from "@/lib/dbConnect";
-import User from "@/models/User";
-import { getContactsFromSheet } from "@/lib/sheetsUtils";
+import dbConnect from '@/lib/dbConnect';
+import Contact from '@/models/Contact';
+import { getToken } from 'next-auth/jwt';
+import { NextResponse } from 'next/server';
 
-export async function POST(req) {
-  try {
-    const { email } = await req.json();
-    await dbConnect();
+export async function GET(request) {
+	const token = await getToken({ req: request });
+	if (!token)
+		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const contacts = await getContactsFromSheet(user.accessToken);
-
-    return Response.json({ contacts });
-  } catch (err) {
-    console.error("❌ Failed to fetch contacts:", err.message);
-    return Response.json(
-      { error: "Failed to retrieve contacts" },
-      { status: 500 }
-    );
-  }
+	await dbConnect();
+	const contacts = await Contact.find({ userId: token.sub }).sort({
+		createdAt: -1,
+	});
+	return NextResponse.json({ contacts });
 }

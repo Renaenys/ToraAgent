@@ -1,6 +1,6 @@
 // ✅ app/contacts/page.js
 "use client";
-import ContactList from "@/components/ContactList";
+import ContactList from "@/components/ContactWidget";
 
 export default function ContactsPage() {
   return (

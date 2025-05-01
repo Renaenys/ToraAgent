@@ -2,7 +2,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import CalendarView from "@/components/CalendarView";
+import CalendarView from "@/DEPRECIATED/CalendarView";
 import EventForm from "@/components/EventForm";
 
 export default function CalendarPage() {
