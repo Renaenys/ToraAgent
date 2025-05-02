@@ -4,13 +4,18 @@ import { saveContactToMongo } from '@/lib/contactUtils';
 
 export async function POST(request) {
 	const token = await getToken({ req: request });
-	if (!token)
+	if (!token) {
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+	}
 
 	const { name, email, phone } = await request.json();
-	if (!name || !email) {
+
+	if (!name || (!email && !phone)) {
 		return NextResponse.json(
-			{ error: 'Missing name or email' },
+			{
+				error:
+					'Name and at least one contact method (email or phone) are required',
+			},
 			{ status: 400 }
 		);
 	}
@@ -23,9 +28,5 @@ export async function POST(request) {
 		phone,
 	});
 
-	if (result.duplicate) {
-		return NextResponse.json({ warning: 'Contact already exists' });
-	}
-
-	return NextResponse.json({ success: true });
+	return NextResponse.json({ success: true, contact: result.contact });
 }

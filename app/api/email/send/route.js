@@ -1,31 +1,60 @@
+import { google } from 'googleapis';
+import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import { sendEmail } from '@/lib/sendEmail';
 
 export async function POST(req) {
-	const { userEmail, to, subject, body } = await req.json();
-
-	if (!userEmail || !to || !subject || !body) {
-		return Response.json({ error: 'Missing required fields' }, { status: 400 });
-	}
-
-	await dbConnect();
-	const user = await User.findOne({ email: userEmail });
-	if (!user) return Response.json({ error: 'User not found' }, { status: 404 });
-
 	try {
-		await sendEmail({
-			accessToken: user.accessToken,
-			to,
-			subject,
-			body,
+		const { email, to, subject, body } = await req.json();
+
+		if (!email || !to || !subject || !body) {
+			return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+		}
+
+		await dbConnect();
+		const user = await User.findOne({ email });
+
+		if (!user?.accessToken || !user?.refreshToken) {
+			return NextResponse.json(
+				{ error: 'User not authorized' },
+				{ status: 401 }
+			);
+		}
+
+		const auth = new google.auth.OAuth2();
+		auth.setCredentials({
+			access_token: user.accessToken,
+			refresh_token: user.refreshToken,
 		});
 
-		return Response.json({ success: true });
+		const gmail = google.gmail({ version: 'v1', auth });
+
+		const message = [
+			`To: ${to}`,
+			`Subject: ${subject}`,
+			'Content-Type: text/plain; charset=utf-8',
+			'',
+			body,
+		].join('\n');
+
+		const encodedMessage = Buffer.from(message)
+			.toString('base64')
+			.replace(/\+/g, '-')
+			.replace(/\//g, '_')
+			.replace(/=+$/, '');
+
+		await gmail.users.messages.send({
+			userId: 'me',
+			requestBody: {
+				raw: encodedMessage,
+			},
+		});
+
+		return NextResponse.json({ success: true });
 	} catch (err) {
-		console.error('❌ Email error:', err.message);
-		return Response.json(
-			{ error: 'Email failed: ' + err.message },
+		console.error('❌ Email send error:', err);
+		return NextResponse.json(
+			{ error: 'Failed to send email' },
 			{ status: 500 }
 		);
 	}

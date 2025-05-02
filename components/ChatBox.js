@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { useContactContext } from '@/context/ContactContext';
 import { useCalendarContext } from '@/context/CalendarContext';
+import { useShoppingContext } from '@/context/ShoppingContext';
 import { FiSend } from 'react-icons/fi';
 
 function extractLastJsonObject(text) {
@@ -25,7 +26,7 @@ export default function ChatBox({ activeSessionId }) {
 	const inputRef = useRef(null);
 	const { triggerRefresh } = useContactContext();
 	const { triggerRefresh: refreshCalendar } = useCalendarContext();
-
+	const { triggerRefresh: refreshShopping } = useShoppingContext();
 	const [sessionId, setSessionId] = useState(null);
 	const [messages, setMessages] = useState([]);
 	const [input, setInput] = useState('');
@@ -33,6 +34,7 @@ export default function ChatBox({ activeSessionId }) {
 	const bottomRef = useRef();
 	const [copiedIndex, setCopiedIndex] = useState(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -97,11 +99,20 @@ export default function ChatBox({ activeSessionId }) {
 		setIsLoading(false);
 
 		if (parsed) {
-			// Check if the reply wants to send email with just a name
+			// ✅ Step 1: Handle contact name resolution BEFORE anything else
 			if (parsed.to && !parsed.to.includes('@')) {
 				const contactResult = await resolveContactEmail(parsed.to);
 				if (typeof contactResult === 'string') {
 					parsed.to = contactResult;
+
+					// Remove the original JSON block and append updated one
+					reply = reply.replace(/({[\s\S]*?})\s*$/, '');
+					reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
+
+					setMessages((m) => [
+						...m.slice(0, -1), // remove previous assistant message
+						{ role: 'assistant', content: reply },
+					]);
 				} else {
 					setMessages((m) => [
 						...m,
@@ -111,12 +122,20 @@ export default function ChatBox({ activeSessionId }) {
 				}
 			}
 
+			// ✅ Step 2: Proceed with modal setup
 			if (parsed.title && parsed.start && parsed.end) {
 				setModalData({ type: 'event', data: parsed });
 			} else if (parsed.to && parsed.subject && parsed.body) {
-				setModalData({ type: 'email', data: parsed });
-			} else if (parsed.name && parsed.email !== undefined) {
+				setModalData({ type: 'email', data: parsed }); // this will now use correct email
+			} else if (parsed.name && (parsed.email || parsed.phone)) {
 				setModalData({ type: 'contact', data: parsed });
+			} else if (parsed?.type === 'shopping') {
+				if (parsed.action === 'get-shopping') {
+					refreshShopping(); // ✅ just update list, no modal
+					return;
+				}
+				// ✅ Add/update flow
+				setModalData({ type: 'shopping', data: parsed });
 			}
 		}
 	};
@@ -144,37 +163,91 @@ export default function ChatBox({ activeSessionId }) {
 	};
 
 	const handleModalSubmit = async () => {
-		if (!modalData || !session) return;
+		if (!modalData || !session || isSubmitting) return;
+
+		setIsSubmitting(true); // prevent double click
 
 		const urlMap = {
 			event: '/api/calendar/create',
 			email: '/api/email/send',
 			contact: '/api/contacts/sync',
+			shopping: '/api/shopping', // ✅ your endpoint
 		};
 
 		const url = urlMap[modalData.type];
 		const payload = {
-			userEmail: session?.user?.email,
+			email: session?.user?.email, // ✅ fix here
 			sessionId,
 			...modalData.data,
 		};
 
-		await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-		});
+		try {
+			await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
 
-		if (modalData.type === 'contact') triggerRefresh();
-		if (modalData.type === 'event') refreshCalendar();
+			if (modalData.type === 'contact') triggerRefresh();
+			if (modalData.type === 'event') refreshCalendar();
+			if (modalData.type === 'shopping') {
+				const existingItemsRes = await fetch(
+					'/api/shopping?email=' + session.user.email
+				);
+				const existingItemsData = await existingItemsRes.json();
+				const existingItems = existingItemsData.items || [];
 
-		setMessages((m) => [
-			...m,
-			{ role: 'assistant', content: `${modalData.type} confirmed ✅` },
-		]);
+				await Promise.all(
+					modalData.data.items.map(async (i) => {
+						const match = existingItems.find(
+							(e) =>
+								e.item?.toLowerCase().trim() === i.name.toLowerCase().trim()
+						);
 
-		setModalData(null);
-		setIsLoading(false);
+						if (match) {
+							// ✅ Update the item
+							await fetch(`/api/shopping/${match._id}`, {
+								method: 'PUT',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({ done: i.done }),
+							});
+						} else {
+							// ✅ Add new item
+							await fetch('/api/shopping', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									email: session.user.email,
+									items: [{ name: i.name, done: i.done || false }],
+								}),
+							});
+						}
+					})
+				);
+
+				refreshShopping();
+				setMessages((m) => [
+					...m,
+					{ role: 'assistant', content: `shopping confirmed ✅` },
+				]);
+				setModalData(null);
+				return;
+			}
+
+			setMessages((m) => [
+				...m,
+				{ role: 'assistant', content: `${modalData.type} confirmed ✅` },
+			]);
+
+			setModalData(null);
+		} catch (err) {
+			setMessages((m) => [
+				...m,
+				{ role: 'assistant', content: '❌ Something went wrong.' },
+			]);
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -286,10 +359,19 @@ export default function ChatBox({ activeSessionId }) {
 						{modalData.type === 'email' && (
 							<>
 								<h2 className="text-lg font-semibold mb-2">Confirm Email</h2>
-								<p>To: {modalData.data.to}</p>
-								<p>Subject: {modalData.data.subject}</p>
+								<p>
+									<strong>To:</strong> {modalData.data.to}
+								</p>
+								<p>
+									<strong>Subject:</strong> {modalData.data.subject}
+								</p>
+
+								<div className="mt-2 p-3 bg-gray-800 rounded max-h-48 overflow-y-auto text-sm text-gray-300 whitespace-pre-wrap border border-gray-700">
+									{modalData.data.body}
+								</div>
 							</>
 						)}
+
 						{modalData.type === 'contact' && (
 							<>
 								<h2 className="text-lg font-semibold mb-2">Confirm Contact</h2>
@@ -298,12 +380,29 @@ export default function ChatBox({ activeSessionId }) {
 								{modalData.data.phone && <p>Phone: {modalData.data.phone}</p>}
 							</>
 						)}
+						{modalData.type === 'shopping' && (
+							<>
+								<h2 className="text-lg font-semibold mb-2">
+									Confirm Shopping Items
+								</h2>
+								<ul className="list-disc list-inside">
+									{modalData.data.items?.map((item, i) => (
+										<li key={i}>
+											{item.name} - {item.done ? '✅ Done' : '🕒 Pending'}
+										</li>
+									))}
+								</ul>
+							</>
+						)}
 					</div>
 					<button
-						className="mt-4 p-2 bg-green-500 w-full rounded"
+						className={`mt-4 p-2 w-full rounded ${
+							isSubmitting ? 'bg-gray-500 cursor-not-allowed' : 'bg-green-500'
+						}`}
 						onClick={handleModalSubmit}
+						disabled={isSubmitting}
 					>
-						Confirm
+						{isSubmitting ? 'Submitting...' : 'Confirm'}
 					</button>
 				</Modal>
 			)}

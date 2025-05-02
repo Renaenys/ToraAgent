@@ -8,12 +8,12 @@ export default function LoginPage() {
 	const { data: session, status } = useSession();
 	const router = useRouter();
 
-	useEffect(() => {
-		// ✅ Already logged in? Go to dashboard
-		if (status === 'authenticated') {
-			router.push('/dashboard');
-		}
-	}, [status]);
+	// useEffect(() => {
+	// 	// ✅ Already logged in? Go to dashboard
+	// 	if (status === 'authenticated') {
+	// 		router.push('/dashboard');
+	// 	}
+	// }, [status]);
 
 	const handleAuth = () => {
 		if (status === 'authenticated') {

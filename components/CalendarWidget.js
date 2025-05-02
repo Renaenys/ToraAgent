@@ -9,6 +9,7 @@ import { FiTrash2 } from 'react-icons/fi';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useCalendarContext } from '@/context/CalendarContext';
+import ToastProvider from './ToastProvider';
 
 export default function CalendarWidget() {
 	const { data: session, status } = useSession();
@@ -91,7 +92,7 @@ export default function CalendarWidget() {
 	};
 
 	const handleDeleteEvent = async (eventId) => {
-		const deleting = toast.loading('Deleting event...');
+		const toastId = toast.loading('toastId  event...');
 
 		const res = await fetch('/api/calendar/delete', {
 			method: 'POST',
@@ -104,14 +105,14 @@ export default function CalendarWidget() {
 
 		if (res.ok) {
 			setEvents(events.filter((e) => e.id !== eventId));
-			toast.update(deleting, {
+			toast.update(toastId, {
 				render: '✅ Event deleted',
 				type: 'success',
 				isLoading: false,
 				autoClose: 2000,
 			});
 		} else {
-			toast.update(deleting, {
+			toast.update(toastId, {
 				render: '❌ Failed to delete event',
 				type: 'error',
 				isLoading: false,
@@ -121,8 +122,8 @@ export default function CalendarWidget() {
 	};
 
 	return (
-		<div className="text-white">
-			<ToastContainer theme="dark" position="bottom-right" />
+		<div className="text-white h-auto">
+			<ToastProvider />
 
 			<Calendar
 				onChange={setSelectedDate}

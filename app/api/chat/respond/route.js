@@ -1,28 +1,26 @@
-// ✅ app/api/chat/respond/route.js
-
 import dbConnect from '@/lib/dbConnect';
 import ChatHistory from '@/models/ChatHistory';
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getToken } from 'next-auth/jwt';
-import Contact from '@/models/Contact'; // ✅ Make sure this model is available
+import Contact from '@/models/Contact';
+import User from '@/models/User';
 
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ✅ Helper: Extract last JSON block
 function extractLastJsonObject(text) {
 	const matches = text.match(/({[\s\S]*?})\s*$/);
 	if (!matches) return null;
 	try {
 		return JSON.parse(matches[1]);
-	} catch {
+	} catch (e) {
+		console.warn('⚠️ Failed to parse JSON block:', e);
 		return null;
 	}
 }
 
-// ✅ Helper: Look up contact email from MongoDB
 async function resolveEmail(userId, name) {
 	if (!name) return null;
 
@@ -33,62 +31,68 @@ async function resolveEmail(userId, name) {
 
 	if (contacts.length === 1) return contacts[0].email;
 
-	// Try exact match fallback
 	const exact = contacts.find(
 		(c) => c.name.toLowerCase() === name.toLowerCase()
 	);
 	if (exact) return exact.email;
 
-	return null; // ambiguous or not found
+	return null;
 }
 
 export async function POST(request) {
 	try {
 		await dbConnect();
 
-		// ✅ 1. Parse request
 		const { sessionId, prompt } = await request.json();
-		if (!sessionId || !prompt) {
-			return NextResponse.json(
-				{ error: 'Missing sessionId or prompt' },
-				{ status: 400 }
-			);
+		if (!prompt) {
+			return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
 		}
 
-		// ✅ 2. Validate token
 		const token = await getToken({ req: request });
 		if (!token || !token.sub) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 		const userId = token.sub;
 
-		// ✅ 3. Load chat history
-		let chat = await ChatHistory.findOne({ sessionId });
-		if (!chat) {
+		let reply = '';
+		let parsed = null;
+
+		let chat = sessionId ? await ChatHistory.findOne({ sessionId }) : null;
+
+		if (sessionId && !chat) {
 			chat = new ChatHistory({ sessionId, userId, messages: [] });
-		} else if (!chat.userId) {
-			chat.userId = userId; // backfill
+		} else if (chat && !chat.userId) {
+			chat.userId = userId;
 		}
 
-		chat.messages.push({ role: 'user', content: prompt });
+		if (chat) {
+			chat.messages.push({ role: 'user', content: prompt });
+		}
 
-		// ✅ 4. AI instructions
 		const MCP_PROMPT = {
 			role: 'system',
 			content: `
-You are a helpful assistant inside a productivity dashboard. Your job is to help users do things like:
+You are a helpful assistant inside a productivity dashboard. Your job is to help users:
 
 - ✅ Save contacts
 - ✅ Schedule calendar events
 - ✅ Compose emails
+- ✅ Manage shopping lists
 
 📌 If the user provides information, respond naturally like a human, then **append a raw JSON block** describing the action:
 
 ➡️ For Contact:
 {
   "name": "Jane Doe",
-  "email": "jane@example.com",
-  "phone": "optional"
+  "email": "jane@example.com", // optional
+  "phone": "012-3456789"       // optional
+}
+
+➡️ To lookup a contact's info:
+{
+  "type": "contact",
+  "action": "lookup",
+  "name": "Edwin"
 }
 
 ➡️ For Calendar Event:
@@ -105,50 +109,135 @@ You are a helpful assistant inside a productivity dashboard. Your job is to help
   "body": "Here are the notes from our meeting..."
 }
 
+➡️ For Shopping List:
+{
+  "type": "shopping",
+  "items": [
+    { "name": "Milk", "done": false }
+  ]
+}
+
+➡️ To fetch shopping list:
+{
+  "type": "shopping",
+  "action": "get-shopping"
+}
+
 ❌ RULES:
-- DO NOT wrap JSON in markdown, backticks, or "Here's the JSON"
-- DO NOT give platform instructions like “open the calendar app”
-- ✅ Just add the raw JSON at the END of your reply
+- DO NOT wrap JSON in markdown, backticks, or use "Here's the JSON"
+- DO NOT say platform instructions
+- ✅ Just add raw JSON at the END
 
 Today is ${new Date().toISOString().split('T')[0]}.
 `.trim(),
 		};
 
-		// ✅ 5. Call OpenAI
-		const messages = [MCP_PROMPT, ...chat.messages];
+		const messages = [MCP_PROMPT];
+		if (chat) messages.push(...chat.messages);
+
 		const completion = await openai.chat.completions.create({
 			model: 'gpt-4o-mini',
 			messages,
 		});
 
-		let reply = completion.choices?.[0]?.message?.content;
-		if (!reply) throw new Error('No reply from OpenAI');
+		reply = completion.choices?.[0]?.message?.content;
+		if (!reply) {
+			reply = '❌ Sorry, I couldn’t understand that.';
+			if (chat) {
+				chat.messages.push({ role: 'assistant', content: reply });
+				await chat.save();
+			}
+			return NextResponse.json({ reply });
+		}
 
-		// ✅ 6. Extract JSON block
-		const parsed = extractLastJsonObject(reply);
+		parsed = extractLastJsonObject(reply);
 
-		// ✅ 7. Patch contact email if needed
-		if (parsed && parsed.to) {
-			// Extract the name part even if AI filled a fake email
-			let namePart = parsed.to.split('@')[0].trim();
+		// 🛒 Handle get-shopping
+		if (parsed?.type === 'shopping' && parsed?.action === 'get-shopping') {
+			const user = await User.findOne({ email: token.email });
+			if (!user?.email) {
+				return NextResponse.json({
+					reply: '❌ Cannot find your shopping list.',
+				});
+			}
 
-			// Try to resolve based on name
+			const listRes = await fetch(
+				`${process.env.NEXTAUTH_URL}/api/shopping?email=${user.email}`
+			);
+			const listData = await listRes.json();
+			const items = listData.items || [];
+
+			if (items.length === 0) {
+				reply = `Your shopping list is empty.`;
+			} else {
+				const lines = items.map((i) => `${i.item} ${i.done ? '✅' : '❌'}`);
+				reply = [
+					`Here's your shopping list:\n`,
+					...lines,
+					`\nLet me know if you need any changes or further assistance!`,
+				].join('\n');
+			}
+
+			if (chat) {
+				chat.messages.push({ role: 'assistant', content: reply });
+				await chat.save();
+			}
+
+			return NextResponse.json({ reply });
+		}
+
+		// 📨 Handle contact name → email resolution for sending emails
+		if (parsed?.to && !parsed.to.includes('@')) {
+			const namePart = parsed.to.trim();
 			const emailFromDB = await resolveEmail(userId, namePart);
-
 			if (emailFromDB) {
 				parsed.to = emailFromDB;
-
-				// Remove old JSON from reply
 				reply = reply.replace(/({[\s\S]*?})\s*$/, '');
-
-				// Append corrected JSON
 				reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
 			}
 		}
 
-		// ✅ 8. Save and return
-		chat.messages.push({ role: 'assistant', content: reply });
-		await chat.save();
+		// 📇 Handle contact lookup by name
+		if (
+			parsed?.type === 'contact' &&
+			parsed?.action === 'lookup' &&
+			parsed?.name
+		) {
+			const user = await User.findOne({ email: token.email });
+			if (!user) {
+				return NextResponse.json({
+					reply: `❌ Cannot find your user account.`,
+				});
+			}
+
+			await dbConnect();
+			const match = await Contact.findOne({
+				userId: token.sub,
+				name: { $regex: parsed.name, $options: 'i' },
+			});
+
+			if (!match) {
+				reply = `❌ No contact named "${parsed.name}" found.`;
+			} else {
+				const lines = [`📇 ${match.name}'s contact:`];
+				if (match.email) lines.push(`📧 ${match.email}`);
+				if (match.phone) lines.push(`📱 ${match.phone}`);
+				reply = lines.join('\n');
+			}
+
+			if (chat) {
+				chat.messages.push({ role: 'assistant', content: reply });
+				await chat.save();
+			}
+
+			return NextResponse.json({ reply });
+		}
+
+		// 💬 Default reply save
+		if (chat) {
+			chat.messages.push({ role: 'assistant', content: reply });
+			await chat.save();
+		}
 
 		return NextResponse.json({ reply });
 	} catch (err) {

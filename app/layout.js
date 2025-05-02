@@ -2,7 +2,7 @@
 
 import './globals.css';
 import { SessionProvider } from 'next-auth/react';
-import 'react-toastify/dist/ReactToastify.css';
+import ToastProvider from '@/components/ToastProvider'; // adjust path if needed
 
 export default function RootLayout({ children }) {
 	return (
@@ -19,7 +19,10 @@ export default function RootLayout({ children }) {
 				<title>Tora AI Assistant</title>
 			</head>
 			<body className="bg-gray-50 text-gray-900 antialiased">
-				<SessionProvider>{children}</SessionProvider>
+				<SessionProvider>
+					<ToastProvider />
+					{children}
+				</SessionProvider>
 			</body>
 		</html>
 	);

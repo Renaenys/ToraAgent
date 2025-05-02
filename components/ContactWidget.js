@@ -107,7 +107,7 @@ export default function ContactWidget() {
 	};
 
 	return (
-		<div className="bg-[#161b22] rounded-xl p-4 shadow-lg h-full flex flex-col">
+		<div className="bg-[#161b22] rounded-xl p-4 shadow-lg h-auto flex flex-col">
 			<ToastContainer theme="dark" position="bottom-right" />
 			<input
 				type="text"

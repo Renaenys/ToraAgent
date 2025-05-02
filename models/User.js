@@ -1,15 +1,23 @@
-// ✅ models/User.js
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema(
-  {
-    name: String,
-    email: { type: String, required: true, unique: true },
-    accessToken: String,
-    refreshToken: String,
-    image: String,
-  },
-  { timestamps: true }
+	{
+		name: String,
+		email: { type: String, required: true, unique: true },
+		accessToken: String,
+		refreshToken: String,
+		image: String,
+		membership: {
+			type: String,
+			enum: ['None', 'VIP', 'VIP2'],
+			default: 'None',
+		},
+		expireDate: {
+			type: Date,
+			default: null,
+		},
+	},
+	{ timestamps: true }
 );
 
-export default mongoose.models.User || mongoose.model("User", UserSchema);
+export default mongoose.models.User || mongoose.model('User', UserSchema);

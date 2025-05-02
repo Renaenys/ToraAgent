@@ -7,8 +7,18 @@ import User from '@/models/User';
 export async function POST(req) {
 	try {
 		// 1️⃣ Parse request body
-		const { sessionId, userEmail, title, description, start, end } =
-			await req.json();
+		const {
+			sessionId,
+			userEmail: fromUserEmail, // might be undefined
+			email: fromEmail, // might be defined
+			title,
+			description,
+			start,
+			end,
+		} = await req.json();
+
+		// Normalize to a single variable
+		const userEmail = fromUserEmail || fromEmail;
 
 		if (!sessionId || !userEmail || !title || !start || !end) {
 			return Response.json(
