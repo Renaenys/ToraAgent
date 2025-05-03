@@ -65,44 +65,45 @@ export default function DashboardPage() {
 			<ShoppingProvider>
 				<ContactProvider>
 					<div className="min-h-screen bg-[#0d1117] text-white p-4 flex flex-col gap-4 overflow-hidden">
-						{/* 🔹 Main Grid Area */}
-						<div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:h-screen">
 							{/* Column 1 */}
-							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden flex flex-col">
+							<div className="flex flex-col gap-4 h-full overflow-hidden min-h-0">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 flex flex-col overflow-hidden min-h-0">
 									<h2 className="text-xl font-semibold mb-4">📅 My Calendar</h2>
 									<CalendarWidget />
 								</div>
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col">
 									<ShoppingListWidget />
 								</div>
 							</div>
 
 							{/* Column 2 */}
-							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden">
+							<div className="flex flex-col gap-4 h-full overflow-hidden min-h-0">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 flex flex-col overflow-hidden min-h-0">
 									<EmailWidget />
 								</div>
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col">
 									<h2 className="text-xl font-semibold mb-4">👥 My Contacts</h2>
 									<ContactWidget />
 								</div>
 							</div>
 
 							{/* Column 3 - Chat History & Briefing */}
-							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden">
+							<div className="flex flex-col gap-4 h-full overflow-hidden min-h-0">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 flex flex-col overflow-hidden min-h-0">
 									<ChatHistorySidebar onSelect={setActiveSessionId} />
 								</div>
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col">
 									<BriefingWidget />
 								</div>
 							</div>
 
 							{/* Column 4 - Assistant */}
-							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col min-h-0 overflow-hidden">
+							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 flex flex-col overflow-hidden min-h-0 lg:h-full h-[calc(100vh-8rem)]">
 								<h2 className="text-xl font-semibold mb-4">🤖 Assistant</h2>
-								<ChatBox activeSessionId={activeSessionId} />
+								<div className="flex-1 min-h-0 overflow-y-auto">
+									<ChatBox activeSessionId={activeSessionId} />
+								</div>
 							</div>
 						</div>
 					</div>

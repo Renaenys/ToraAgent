@@ -53,7 +53,9 @@ export default function EmailWidget() {
 		setLoadingReply(false);
 	};
 
-	const handleDeleteEmail = async (id) => {
+	const handleDeleteEmail = async (id, skipToast = false) => {
+		if (!skipToast) return;
+
 		const res = await fetch('/api/email/delete', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -100,7 +102,7 @@ export default function EmailWidget() {
 	};
 
 	return (
-		<div className="bg-[#161b22] rounded-xl shadow-lg text-white h-full flex flex-col">
+		<div className="bg-[#161b22]  text-white h-full flex flex-col">
 			<h2 className="text-xl font-semibold mb-4 px-4 flex items-center gap-2">
 				<FiMail /> My Inbox
 			</h2>
@@ -134,7 +136,38 @@ export default function EmailWidget() {
 									title="Delete Email"
 									onClick={(e) => {
 										e.stopPropagation();
-										handleDeleteEmail(msg.id);
+
+										const toastId = toast(
+											({ closeToast }) => (
+												<div className="text-white">
+													<p className="mb-2">⚠️ Confirm delete this email?</p>
+													<div className="flex gap-2">
+														<button
+															onClick={() => {
+																handleDeleteEmail(msg.id, true);
+																toast.dismiss(toastId);
+															}}
+															className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm font-medium"
+														>
+															Yes, delete
+														</button>
+														<button
+															onClick={() => toast.dismiss(toastId)}
+															className="bg-gray-500 hover:bg-gray-600 px-3 py-1 rounded text-sm font-medium"
+														>
+															Cancel
+														</button>
+													</div>
+												</div>
+											),
+											{
+												autoClose: false,
+												closeOnClick: false,
+												draggable: false,
+												position: 'bottom-right',
+												style: { background: '#1f2937' },
+											}
+										);
 									}}
 								>
 									<FiTrash2 />
