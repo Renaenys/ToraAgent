@@ -18,13 +18,12 @@ const handler = NextAuth({
 						'https://www.googleapis.com/auth/gmail.readonly', // ✅ required to read email FULL
 						'https://www.googleapis.com/auth/gmail.send',
 						'https://www.googleapis.com/auth/gmail.modify', // ✅ required to delete
-						// 'https://www.googleapis.com/auth/gmail.metadata', // optional but safe
 						'https://www.googleapis.com/auth/gmail.labels', // optional
 						'https://www.googleapis.com/auth/spreadsheets',
 					].join(' '),
 					access_type: 'offline',
-					prompt: 'consent',
-					include_granted_scopes: false,
+					prompt: 'consent', // 🔥 Force full re-auth
+					include_granted_scopes: true, // 🔒 Ensures persistent scopes
 				},
 			},
 		}),

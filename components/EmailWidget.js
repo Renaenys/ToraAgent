@@ -129,7 +129,7 @@ export default function EmailWidget() {
 										From: {msg.from?.email || 'Unknown'}
 									</p>
 								</div>
-								{/* <button
+								<button
 									className="ml-3 text-red-500 hover:text-red-400"
 									title="Delete Email"
 									onClick={(e) => {
@@ -138,7 +138,7 @@ export default function EmailWidget() {
 									}}
 								>
 									<FiTrash2 />
-								</button> */}
+								</button>
 							</div>
 						</div>
 					))
@@ -164,9 +164,37 @@ export default function EmailWidget() {
 						<p className="whitespace-pre-wrap text-sm">
 							{selectedEmail.snippet || 'No content'}
 						</p>
+						{/* ✅ Mark as Read Button */}
+						<button
+							onClick={async () => {
+								const res = await fetch('/api/email/mark-read', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify({
+										email: session.user.email,
+										id: selectedEmail.id,
+									}),
+								});
+
+								if (res.ok) {
+									toast.success('📨 Marked as read');
+									setMessages((msgs) =>
+										msgs.filter((msg) => msg.id !== selectedEmail.id)
+									);
+									setSelectedEmail(null);
+								} else {
+									toast.error('❌ Failed to mark as read');
+								}
+							}}
+							className="mt-4 w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded-xl"
+						>
+							Mark as Read
+						</button>
+
+						{/* ✅ Reply Button */}
 						<button
 							onClick={() => setShowReplyModal(true)}
-							className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-xl"
+							className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-xl"
 						>
 							Reply with AI
 						</button>

@@ -12,6 +12,7 @@ import EmailWidget from '@/components/EmailWidget';
 import { CalendarProvider } from '@/context/CalendarContext';
 import ShoppingListWidget from '@/components/ShoppingListWidget';
 import { ShoppingProvider } from '@/context/ShoppingContext';
+import BriefingWidget from '@/components/BriefingWidget';
 
 export default function DashboardPage() {
 	const { data: session, status } = useSession();
@@ -37,15 +38,9 @@ export default function DashboardPage() {
 				});
 
 				const data = await res.json();
-				console.log('[Membership API Response]', data);
 
 				const isExpired =
 					!data.expireDate || new Date(data.expireDate) < new Date();
-				console.log('[Membership Check]', {
-					membership: data.membership,
-					expireDate: data.expireDate,
-					isExpired,
-				});
 
 				if (data.membership === 'None' || isExpired) {
 					router.push('/pricing');
@@ -69,37 +64,43 @@ export default function DashboardPage() {
 		<CalendarProvider>
 			<ShoppingProvider>
 				<ContactProvider>
-					<div className="h-screen bg-[#0d1117] text-white p-4 flex flex-col lg:flex-row gap-4 max-w-full overflow-x-hidden">
-						<div className="w-full max-w-screen-2xl flex flex-col lg:flex-row gap-4">
-							{/* Left Column */}
-							<div className="flex flex-col gap-4 basis-1/5 min-w-[400px]">
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[70%]">
+					<div className="min-h-screen bg-[#0d1117] text-white p-4 flex flex-col gap-4 overflow-hidden">
+						{/* 🔹 Main Grid Area */}
+						<div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
+							{/* Column 1 */}
+							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden flex flex-col">
 									<h2 className="text-xl font-semibold mb-4">📅 My Calendar</h2>
 									<CalendarWidget />
 								</div>
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[30%]">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
 									<ShoppingListWidget />
 								</div>
 							</div>
 
-							{/* Middle Left */}
-							<div className="flex flex-col gap-4 basis-1/5 min-w-[400px]">
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[50%]">
+							{/* Column 2 */}
+							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden">
 									<EmailWidget />
 								</div>
-								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col h-[50%]">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
 									<h2 className="text-xl font-semibold mb-4">👥 My Contacts</h2>
 									<ContactWidget />
 								</div>
 							</div>
 
-							{/* Chat History Sidebar */}
-							<div className="flex flex-col basis-1/5 min-w-[280px] bg-[#161b22] rounded-xl p-4 shadow-lg">
-								<ChatHistorySidebar onSelect={setActiveSessionId} />
+							{/* Column 3 - Chat History & Briefing */}
+							<div className="flex flex-col gap-4 min-h-0 overflow-hidden">
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex-1 min-h-0 overflow-hidden">
+									<ChatHistorySidebar onSelect={setActiveSessionId} />
+								</div>
+								<div className="bg-[#161b22] rounded-xl p-4 shadow-lg">
+									<BriefingWidget />
+								</div>
 							</div>
 
-							{/* Chat Assistant */}
-							<div className="flex flex-col basis-2/5 min-w-[400px] bg-[#161b22] rounded-xl p-4 shadow-lg">
+							{/* Column 4 - Assistant */}
+							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col min-h-0 overflow-hidden">
 								<h2 className="text-xl font-semibold mb-4">🤖 Assistant</h2>
 								<ChatBox activeSessionId={activeSessionId} />
 							</div>

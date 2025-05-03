@@ -41,7 +41,8 @@ export async function POST(req) {
 		const listRes = await gmail.users.messages.list({
 			userId: 'me',
 			maxResults: 10,
-		});
+			q: 'is:unread', // 🔍 Only fetch unread messages
+		  });
 
 		const messageList = listRes.data.messages || [];
 
