@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 
 export default function Modal({ children, onClose }) {
-	// Close on Escape
 	useEffect(() => {
 		const handler = (e) => {
 			if (e.key === 'Escape') onClose();

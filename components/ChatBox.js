@@ -58,6 +58,40 @@ export default function ChatBox({ activeSessionId }) {
 	}, [activeSessionId]);
 
 	useEffect(() => {
+		function handleVoiceMsg(e) {
+			const updates = e.detail;
+			if (!Array.isArray(updates)) return;
+
+			setMessages((prev) => [...prev, ...updates]);
+
+			const userPrompt = updates.find((u) => u.role === 'user')?.content;
+			if (userPrompt) {
+				fetch('/api/chat/respond', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ sessionId, prompt: userPrompt }),
+				})
+					.then((res) => res.json())
+					.then((data) => {
+						const reply = data.reply || '';
+						// ✅ only add voice response to chat, avoid re-adding elsewhere
+						setMessages((prev) => [
+							...prev.filter((m) => m.content !== '...'),
+							{ role: 'assistant', content: reply },
+						]);
+						setIsLoading(false);
+						window.dispatchEvent(
+							new CustomEvent('tts-speak', { detail: reply })
+						);
+						handleParsedActions(reply); // 👈 manually handle actions
+					});
+			}
+		}
+		window.addEventListener('voice-chat-msg', handleVoiceMsg);
+		return () => window.removeEventListener('voice-chat-msg', handleVoiceMsg);
+	}, [sessionId]);
+
+	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 	}, [messages]);
 
@@ -88,7 +122,45 @@ export default function ChatBox({ activeSessionId }) {
 		return { error: 'No contact found.' };
 	};
 
-	const handleAIResponse = async (reply) => {
+	const handleParsedActions = async (reply) => {
+		const parsed = extractLastJsonObject(reply);
+		if (!parsed) return;
+
+		if (parsed.to && !parsed.to.includes('@')) {
+			const contactResult = await resolveContactEmail(parsed.to);
+			if (typeof contactResult === 'string') {
+				parsed.to = contactResult;
+				reply = reply.replace(/({[\s\S]*?})\s*$/, '');
+				reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
+				setMessages((m) => [
+					...m.slice(0, -1),
+					{ role: 'assistant', content: reply },
+				]);
+			} else {
+				setMessages((m) => [
+					...m,
+					{ role: 'assistant', content: contactResult.error },
+				]);
+				return;
+			}
+		}
+
+		if (parsed.title && parsed.start && parsed.end) {
+			setModalData({ type: 'event', data: parsed });
+		} else if (parsed.to && parsed.subject && parsed.body) {
+			setModalData({ type: 'email', data: parsed });
+		} else if (parsed.name && (parsed.email || parsed.phone)) {
+			setModalData({ type: 'contact', data: parsed });
+		} else if (parsed?.type === 'shopping') {
+			if (parsed.action === 'get-shopping') {
+				refreshShopping();
+				return;
+			}
+			setModalData({ type: 'shopping', data: parsed });
+		}
+	};
+
+	const handleAIResponse = async (reply, isVoice = false) => {
 		const parsed = extractLastJsonObject(reply);
 
 		setMessages((m) => {
@@ -98,46 +170,11 @@ export default function ChatBox({ activeSessionId }) {
 
 		setIsLoading(false);
 
-		if (parsed) {
-			// ✅ Step 1: Handle contact name resolution BEFORE anything else
-			if (parsed.to && !parsed.to.includes('@')) {
-				const contactResult = await resolveContactEmail(parsed.to);
-				if (typeof contactResult === 'string') {
-					parsed.to = contactResult;
-
-					// Remove the original JSON block and append updated one
-					reply = reply.replace(/({[\s\S]*?})\s*$/, '');
-					reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
-
-					setMessages((m) => [
-						...m.slice(0, -1), // remove previous assistant message
-						{ role: 'assistant', content: reply },
-					]);
-				} else {
-					setMessages((m) => [
-						...m,
-						{ role: 'assistant', content: contactResult.error },
-					]);
-					return;
-				}
-			}
-
-			// ✅ Step 2: Proceed with modal setup
-			if (parsed.title && parsed.start && parsed.end) {
-				setModalData({ type: 'event', data: parsed });
-			} else if (parsed.to && parsed.subject && parsed.body) {
-				setModalData({ type: 'email', data: parsed }); // this will now use correct email
-			} else if (parsed.name && (parsed.email || parsed.phone)) {
-				setModalData({ type: 'contact', data: parsed });
-			} else if (parsed?.type === 'shopping') {
-				if (parsed.action === 'get-shopping') {
-					refreshShopping(); // ✅ just update list, no modal
-					return;
-				}
-				// ✅ Add/update flow
-				setModalData({ type: 'shopping', data: parsed });
-			}
+		if (isVoice) {
+			window.dispatchEvent(new CustomEvent('tts-speak', { detail: reply }));
 		}
+
+		handleParsedActions(reply);
 	};
 
 	const handleSend = async () => {
@@ -349,8 +386,40 @@ export default function ChatBox({ activeSessionId }) {
 
 			{/* Modal (unchanged) */}
 			{modalData && (
-				<Modal onClose={() => setModalData(null)}>
-					{/* ... keep your modal rendering code here ... */}
+				<Modal
+					onClose={() => setModalData(null)}
+					onSubmit={handleModalSubmit}
+					isLoading={isSubmitting}
+				>
+					<div className="space-y-4">
+						<h3 className="text-xl font-semibold capitalize">
+							{modalData.type} Confirmation
+						</h3>
+
+						<pre className="bg-gray-800 text-sm p-3 rounded text-gray-200 overflow-x-auto whitespace-pre-wrap">
+							{JSON.stringify(modalData.data, null, 2)}
+						</pre>
+
+						<div className="flex justify-end gap-2 pt-2">
+							<button
+								onClick={() => setModalData(null)}
+								className="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleModalSubmit}
+								disabled={isSubmitting}
+								className={`py-2 px-4 rounded ${
+									isSubmitting
+										? 'bg-green-800'
+										: 'bg-green-600 hover:bg-green-500'
+								}`}
+							>
+								{isSubmitting ? 'Saving...' : 'Confirm'}
+							</button>
+						</div>
+					</div>
 				</Modal>
 			)}
 		</div>

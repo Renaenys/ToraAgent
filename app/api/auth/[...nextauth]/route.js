@@ -3,7 +3,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 
-const handler = NextAuth({
+export const authOptions = {
 	providers: [
 		GoogleProvider({
 			clientId: process.env.GOOGLE_CLIENT_ID,
@@ -15,15 +15,15 @@ const handler = NextAuth({
 						'email',
 						'profile',
 						'https://www.googleapis.com/auth/calendar',
-						'https://www.googleapis.com/auth/gmail.readonly', // ✅ required to read email FULL
+						'https://www.googleapis.com/auth/gmail.readonly',
 						'https://www.googleapis.com/auth/gmail.send',
-						'https://www.googleapis.com/auth/gmail.modify', // ✅ required to delete
-						'https://www.googleapis.com/auth/gmail.labels', // optional
+						'https://www.googleapis.com/auth/gmail.modify',
+						'https://www.googleapis.com/auth/gmail.labels',
 						'https://www.googleapis.com/auth/spreadsheets',
 					].join(' '),
 					access_type: 'offline',
-					prompt: 'consent', // 🔥 Force full re-auth
-					include_granted_scopes: true, // 🔒 Ensures persistent scopes
+					prompt: 'consent',
+					include_granted_scopes: true,
 				},
 			},
 		}),
@@ -48,6 +48,8 @@ const handler = NextAuth({
 			return session;
 		},
 	},
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

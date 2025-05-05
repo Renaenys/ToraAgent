@@ -132,8 +132,16 @@ Today is ${new Date().toISOString().split('T')[0]}.
 `.trim(),
 		};
 
-		const messages = [MCP_PROMPT];
-		if (chat) messages.push(...chat.messages);
+		let messages = [];
+
+		if (chat?.messages?.length) {
+			if (chat.messages.length > 20) {
+				chat.messages = chat.messages.slice(-20);
+			}
+			messages = [MCP_PROMPT, ...chat.messages]; // Always prepend system prompt
+		} else {
+			messages = [MCP_PROMPT];
+		}
 
 		const completion = await openai.chat.completions.create({
 			model: 'gpt-4o-mini',
@@ -223,6 +231,11 @@ Today is ${new Date().toISOString().split('T')[0]}.
 				if (match.email) lines.push(`📧 ${match.email}`);
 				if (match.phone) lines.push(`📱 ${match.phone}`);
 				reply = lines.join('\n');
+			}
+
+			if (parsed?.to && parsed?.subject && parsed?.body) {
+				// You can optionally validate or log here if needed
+				reply = `${reply.trim()}\n\n${JSON.stringify(parsed)}`;
 			}
 
 			if (chat) {

@@ -37,20 +37,39 @@ export default function EmailWidget() {
 		const recipientEmail = selectedEmail?.from?.email || '';
 		const recipientName = recipientEmail?.split('@')[0] || 'there';
 
-		const prompt = `
-		You are an AI assistant. Write a clear and professional email reply. Use the sender's name "${userName}" and reply to recipient "${recipientName}".
-		Here is the received message: "${selectedEmail.snippet}"
-		Here is additional context: ${aiReplyPrompt}
-		`.trim();
+		try {
+			const res = await fetch('/api/email/ai-reply', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					userName,
+					recipientName,
+					recipientEmail,
+					subject: selectedEmail.subject || 'No Subject',
+					originalMessage: selectedEmail.snippet,
+					userPrompt: aiReplyPrompt,
+				}),
+			});
 
-		const res = await fetch('/api/chat/respond', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ prompt }),
-		});
-		const data = await res.json();
-		setAiResponse(data.reply || 'AI could not generate a response.');
-		setLoadingReply(false);
+			const data = await res.json();
+
+			// Optional: validate JSON safely
+			let parsed = {};
+			try {
+				parsed = JSON.parse(data.reply);
+			} catch {
+				setAiResponse('❌ Failed to parse AI reply');
+				setLoadingReply(false);
+				return;
+			}
+
+			setAiResponse(parsed.body || 'No reply generated.');
+		} catch (err) {
+			console.error('AI reply error:', err);
+			setAiResponse('❌ Failed to generate reply');
+		} finally {
+			setLoadingReply(false);
+		}
 	};
 
 	const handleDeleteEmail = async (id, skipToast = false) => {
