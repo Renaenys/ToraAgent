@@ -288,9 +288,9 @@ export default function ChatBox({ activeSessionId }) {
 	};
 
 	return (
-		<div className="flex flex-col h-full min-h-0 bg-gray-900 text-white overflow-hidden rounded-xl">
+		<div className="flex flex-col lg:h-full h-96 bg-gray-900 text-white overflow-hidden rounded-xl">
 			{/* Message List */}
-			<div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2 bg-indigo-950">
+			<div className="flex-1 overflow-y-auto p-4 space-y-2 bg-indigo-950 max-h-[calc(100vh-15rem)]">
 				{messages.map((m, i) => (
 					<div
 						key={i}

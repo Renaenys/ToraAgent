@@ -111,7 +111,7 @@ export default function VoiceChatBox() {
 
 	return (
 		<div className="bg-[#161b22] rounded-xl p-4 shadow-lg text-white">
-			<h2 className="text-lg font-semibold mb-2">🎙️ Voice Assistant (VIP2)</h2>
+			<h2 className="text-lg font-semibold mb-2">🎙️ Voice Assistant</h2>
 			<div className="flex items-center gap-4">
 				<button
 					className={`p-3 rounded-full ${

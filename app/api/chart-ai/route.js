@@ -14,9 +14,22 @@ export async function POST(req) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const { ticker } = await req.json();
-		if (!ticker) {
-			return NextResponse.json({ error: 'Missing ticker' }, { status: 400 });
+		let { ticker } = await req.json();
+		if (!ticker || !ticker.includes(':')) {
+			return NextResponse.json(
+				{ error: 'Invalid ticker format' },
+				{ status: 400 }
+			);
+		}
+
+		// Validate exchange and pair
+		const [exchange, pair] = ticker.trim().toUpperCase().split(':');
+		const allowedExchanges = ['BINANCE', 'NASDAQ', 'FOREXCOM'];
+		if (!allowedExchanges.includes(exchange) || !pair) {
+			return NextResponse.json(
+				{ error: 'Invalid exchange or symbol' },
+				{ status: 400 }
+			);
 		}
 
 		await dbConnect();
@@ -29,30 +42,33 @@ export async function POST(req) {
 		const email = session.user.email;
 		const today = new Date().toISOString().slice(0, 10);
 
-		let usage = await ChartAiUsage.findOne({ email, date: today });
-		if (!usage) {
-			usage = await ChartAiUsage.create({ email, date: today, count: 0 });
-		}
+		// Check usage count
+		const usage = await ChartAiUsage.findOne({ email, date: today });
+		const used = usage?.count || 0;
 
-		if (usage.count >= 3) {
+		if (used >= 3) {
 			return NextResponse.json(
 				{ error: 'Daily usage limit reached', usageLeft: 0 },
 				{ status: 403 }
 			);
 		}
 
-		// generate image + analysis AFTER limit check
-		const imageBuffer = await generateChartImage(ticker);
+		// 🧠 Generate image and analyze
+		const imageBuffer = await generateChartImage(`${exchange}:${pair}`);
 		const analysis = await analyzeChartImage(imageBuffer);
 		const imageBase64 = imageBuffer.toString('base64');
 
-		usage.count += 1;
-		await usage.save();
+		// ✅ Update or insert usage count
+		await ChartAiUsage.updateOne(
+			{ email, date: today },
+			{ $inc: { count: 1 } },
+			{ upsert: true }
+		);
 
 		return NextResponse.json({
 			image: imageBase64,
 			analysis,
-			usageLeft: 3 - usage.count,
+			usageLeft: 2 - used, // used already counted before increment
 		});
 	} catch (err) {
 		console.error('🔥 Error in /api/chart-ai:', err);
