@@ -24,7 +24,7 @@ export async function POST(req) {
 
 		// Validate exchange and pair
 		const [exchange, pair] = ticker.trim().toUpperCase().split(':');
-		const allowedExchanges = ['BINANCE', 'NASDAQ', 'FOREXCOM'];
+		const allowedExchanges = ['BINANCE', 'NASDAQ', 'OANDA'];
 		if (!allowedExchanges.includes(exchange) || !pair) {
 			return NextResponse.json(
 				{ error: 'Invalid exchange or symbol' },

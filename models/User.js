@@ -9,7 +9,7 @@ const UserSchema = new mongoose.Schema(
 		image: String,
 		membership: {
 			type: String,
-			enum: ['None', 'VIP', 'VIP2'],
+			enum: ['None', 'TRAIL', 'VIP', 'VIP2'],
 			default: 'None',
 		},
 		expireDate: {

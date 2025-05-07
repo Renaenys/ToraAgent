@@ -5,8 +5,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import ChartAiWidget from '@/components/ChartAiWidget';
-import MarketingGenWidget from '@/components/MarketingGenWidget';
-import AlignerWidget from '@/components/CoachWidget';
 import ChatBox from '@/components/ChatBox';
 import VoiceChatBox from '@/components/VoiceChatBox';
 import { CalendarProvider } from '@/context/CalendarContext';
