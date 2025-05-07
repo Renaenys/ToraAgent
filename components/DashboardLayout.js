@@ -2,7 +2,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiMenu, FiGrid, FiBarChart2, FiChevronLeft } from 'react-icons/fi';
+import {
+	FiMenu,
+	FiGrid,
+	FiBarChart2,
+	FiChevronLeft,
+	FiUserCheck,
+} from 'react-icons/fi';
+import { BiSolidMegaphone } from 'react-icons/bi';
 
 const navItems = [
 	{
@@ -14,6 +21,16 @@ const navItems = [
 		href: '/dashboard/business',
 		label: 'Business Tools',
 		icon: <FiBarChart2 size={18} />,
+	},
+	{
+		href: '/dashboard/marketing',
+		label: 'Marketing Tools',
+		icon: <BiSolidMegaphone size={18} />,
+	},
+	{
+		href: '/dashboard/coach',
+		label: 'Coach Tools',
+		icon: <FiUserCheck size={18} />,
 	},
 ];
 
@@ -99,9 +116,6 @@ export default function DashboardLayout({ children }) {
 					>
 						<FiMenu size={22} />
 					</button>
-					<span className="text-sm text-gray-400 hidden lg:inline">
-						Mito Tools
-					</span>
 				</div>
 
 				<main className="flex-1 overflow-y-auto p-4 w-full">{children}</main>

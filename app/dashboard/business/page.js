@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import ChartAiWidget from '@/components/ChartAiWidget';
 import MarketingGenWidget from '@/components/MarketingGenWidget';
-import AlignerWidget from '@/components/AlignerWidget';
+import AlignerWidget from '@/components/CoachWidget';
 import ChatBox from '@/components/ChatBox';
 import VoiceChatBox from '@/components/VoiceChatBox';
 import { CalendarProvider } from '@/context/CalendarContext';
@@ -60,20 +60,6 @@ export default function DashboardPage2() {
 							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col max-h-[calc(100vh-6rem)] overflow-auto">
 								<h2 className="text-xl font-semibold mb-4">📉 Chart AI</h2>
 								<ChartAiWidget email={user.email} />
-							</div>
-
-							{/* 💡 Marketing Generator */}
-							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col max-h-[calc(100vh-6rem)] overflow-auto">
-								<h2 className="text-xl font-semibold mb-4">
-									💡 Marketing Post
-								</h2>
-								<MarketingGenWidget />
-							</div>
-
-							{/* 📐 Aligner */}
-							<div className="bg-[#161b22] rounded-xl p-4 shadow-lg flex flex-col max-h-[calc(100vh-6rem)] overflow-auto">
-								<h2 className="text-xl font-semibold mb-4">📐 Aligner</h2>
-								<AlignerWidget />
 							</div>
 
 							{/* 🎤 Assistant */}

@@ -1,8 +1,8 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import MarketingGenUsage from '@/models/MarketingGenUsage';
-import { NextResponse } from 'next/server';
 
 export async function GET() {
 	try {
@@ -12,17 +12,15 @@ export async function GET() {
 		}
 
 		await dbConnect();
+		const email = session.user.email;
 		const today = new Date().toISOString().slice(0, 10);
 
-		const usage = await MarketingGenUsage.findOne({
-			email: session.user.email,
-			date: today,
-		});
+		let usage = await MarketingGenUsage.findOne({ email, date: today });
+		const usageLeft = usage ? Math.max(0, 3 - usage.count) : 3;
 
-		const used = usage?.count || 0;
-		return NextResponse.json({ usageLeft: Math.max(0, 3 - used) });
+		return NextResponse.json({ usageLeft });
 	} catch (err) {
-		console.error('❌ Error getting usage:', err);
+		console.error('🔥 GET usage error:', err);
 		return NextResponse.json({ error: 'Server error' }, { status: 500 });
 	}
 }
