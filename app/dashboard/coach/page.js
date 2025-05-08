@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
 import ToraCoachForm from '@/components/ToraCoachForm';
 import ToraCoachSummary from '@/components/ToraCoachSummary';
 import ToraCoach21DayMission from '@/components/ToraCoach21DayMission';
@@ -8,65 +10,96 @@ import ToraCoachChatBox from '@/components/ToraCoachChatBox';
 import DashboardLayout from '@/components/DashboardLayout';
 
 export default function CoachPage() {
+	const { data: session, status } = useSession();
+	const router = useRouter();
+
+	const [user, setUser] = useState(null);
+	const [userId, setUserId] = useState('');
 	const [profile, setProfile] = useState(null);
 	const [output, setOutput] = useState('');
-	const [userId, setUserId] = useState('');
 	const [loading, setLoading] = useState(true);
-	const { data: session, status } = useSession();
-	const [user, setUser] = useState(null);
+	const [authChecked, setAuthChecked] = useState(false);
 
+	// Step 1: Check auth & VIP2 membership
 	useEffect(() => {
-		if (status === 'unauthenticated') router.push('/login');
-	}, [status]);
+		if (status === 'unauthenticated') {
+			router.push('/login');
+			return;
+		}
 
-	useEffect(() => {
-		const checkMembership = async () => {
-			if (status !== 'authenticated') return;
-			try {
-				const res = await fetch('/api/user/membership', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ email: session.user.email }),
-				});
-				const data = await res.json();
-				const isExpired =
-					!data.expireDate || new Date(data.expireDate) < new Date();
-				if (data.membership !== 'VIP2' || isExpired) {
+		if (status === 'authenticated') {
+			const checkMembership = async () => {
+				try {
+					const res = await fetch('/api/user/membership', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ email: session.user.email }),
+					});
+					const data = await res.json();
+					const isExpired =
+						!data.expireDate || new Date(data.expireDate) < new Date();
+
+					if (data.membership !== 'VIP2' || isExpired) {
+						router.push('/pricing');
+					} else {
+						setUser(data);
+						setAuthChecked(true);
+					}
+				} catch (err) {
+					console.error('❌ Membership check failed:', err);
 					router.push('/pricing');
-				} else {
-					setUser(data);
 				}
-			} catch (err) {
-				console.error('❌ Error checking membership:', err);
-				router.push('/pricing');
-			}
-		};
-		checkMembership();
+			};
+			checkMembership();
+		}
 	}, [session, status]);
 
-	if (!user) return <div className="text-white p-6">Loading...</div>;
-
+	// Step 2: Get userId from /api/user/me
 	useEffect(() => {
-		const storedUser = localStorage.getItem('userId') || 'demo-user-123';
-		setUserId(storedUser);
+		if (!authChecked) return;
+
+		const getUserId = async () => {
+			try {
+				const res = await fetch('/api/user/me');
+				const data = await res.json();
+				if (data?.user?._id) {
+					localStorage.setItem('userId', data.user._id);
+					setUserId(data.user._id);
+				}
+			} catch (err) {
+				console.error('❌ Failed to fetch userId:', err);
+			}
+		};
+
+		getUserId();
+	}, [authChecked]);
+
+	// Step 3: Load profile + session output after userId is set
+	useEffect(() => {
+		if (!userId) return;
 
 		const fetchProfile = async () => {
-			const res = await fetch(`/api/tora-coach/profile?userId=${storedUser}`);
-			const data = await res.json();
-			if (data && data.identity) {
-				setProfile(data);
-				const session = await fetch(
-					`/api/tora-coach/session?userId=${storedUser}`
-				);
-				const sessions = await session.json();
-				if (sessions.length > 0) setOutput(sessions[0].output);
+			try {
+				const res = await fetch(`/api/tora-coach/profile?userId=${userId}`);
+				const data = await res.json();
+				if (data?.identity) {
+					setProfile(data);
+					const sessionRes = await fetch(
+						`/api/tora-coach/session?userId=${userId}`
+					);
+					const sessions = await sessionRes.json();
+					if (sessions.length > 0) setOutput(sessions[0].output);
+				}
+			} catch (err) {
+				console.error('❌ Failed to fetch profile:', err);
 			}
 			setLoading(false);
 		};
 
 		fetchProfile();
-	}, []);
+	}, [userId]);
 
+	// Reset all user data
 	const handleReset = async () => {
 		if (!confirm('Are you sure you want to reset all your coach data?')) return;
 
@@ -89,7 +122,8 @@ export default function CoachPage() {
 		setOutput('');
 	};
 
-	if (loading) {
+	// Guard render
+	if (!authChecked || loading || !userId) {
 		return (
 			<div className="text-white p-8 flex items-center justify-center h-[60vh]">
 				<div className="animate-pulse text-lg">Loading Tora Coach...</div>
