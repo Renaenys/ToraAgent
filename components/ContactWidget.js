@@ -107,7 +107,7 @@ export default function ContactWidget() {
 	};
 
 	return (
-		<div className="bg-[#161b22] rounded-xl p-4 shadow-lg h-auto flex flex-col">
+		<div className="bg-[#111827]/80 backdrop-blur-md rounded-2xl p-4 shadow-lg h-full flex flex-col">
 			<ToastContainer theme="dark" position="bottom-right" />
 			<input
 				type="text"
@@ -116,20 +116,19 @@ export default function ContactWidget() {
 				onChange={(e) => setSearch(e.target.value)}
 				className="mb-4 p-2 rounded bg-[#0d1117] text-white border border-gray-600 placeholder-gray-400"
 			/>
-
 			{error ? (
 				<p className="text-red-500">Error: {error}</p>
 			) : filteredContacts.length === 0 ? (
 				<p className="text-gray-400">No contacts found.</p>
 			) : (
-				<ul className="space-y-2 overflow-y-auto max-h-[300px] pr-1">
+				<ul className="space-y-2 overflow-y-auto max-h-60 pr-1">
 					{filteredContacts.map((contact, idx) => (
 						<li
 							key={contact._id || idx}
-							className="p-3 bg-[#1f2937] rounded shadow-sm border border-gray-700 flex justify-between items-start"
+							className="p-3 bg-[#1f2937] rounded-xl shadow-sm border border-gray-700 flex justify-between items-start"
 						>
 							<div>
-								<p className="font-medium text-white">{contact.name}</p>
+								<p className="font-medium">{contact.name}</p>
 								<p className="text-sm text-gray-400">{contact.email}</p>
 								{contact.phone && (
 									<p className="text-sm text-gray-500">📞 {contact.phone}</p>

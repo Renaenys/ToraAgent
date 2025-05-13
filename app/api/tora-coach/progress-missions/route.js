@@ -39,13 +39,23 @@ export async function GET(req) {
 
 	// Ask Langchain to generate 3 missions
 	const prompt = `
-You're Tora Coach, the user's AI growth mentor. Based on the plan summary below and today's context (Day ${dayNumber} of 21), generate 3 personalized missions for the user to complete today. Each should be clear, achievable, and growth-oriented.
+You are Tora Coach — an AI mentor built by Tora.now.
 
-Return only bullet points:
-* Task 1
-* Task 2
-* Task 3
+Analyze the user's intake form and quiz responses below. Identify:
+1. Their motivation type and blockers
+2. Assign a coaching persona (e.g., Focused Strategist, Stuck Soloist, Curious Builder)
+3. Choose their primary coaching mode (Growth, Business, Investment)
+4. Select a goal framework (SMART, WOOP, OKR, etc.)
+5. Identify 2–3 Tora archetypes that match their mindset
+6. Generate a 21-day coaching plan summary (for use in daily mission generation)
 
+Output only:
+* Persona: ...
+* Coaching Mode: ...
+* Goal Framework: ...
+* Archetypes: ...
+* Plan Summary:
+...
 Plan Summary:
 ${session.output}
 `.trim();

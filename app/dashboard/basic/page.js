@@ -60,21 +60,35 @@ export default function BasicDashboard() {
 			<CalendarProvider>
 				<ShoppingProvider>
 					<ContactProvider>
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-h-[calc(100vh-5rem)] overflow-auto">
 							<div className="flex flex-col gap-4">
-								<CalendarWidget />
-								<ShoppingListWidget />
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<CalendarWidget />
+								</div>
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<ShoppingListWidget />
+								</div>
 							</div>
 							<div className="flex flex-col gap-4">
-								<EmailWidget />
-								<ContactWidget />
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<EmailWidget />
+								</div>
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<ContactWidget />
+								</div>
 							</div>
 							<div className="flex flex-col gap-4">
-								<ChatHistorySidebar onSelect={setActiveSessionId} />
-								<BriefingWidget />
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<ChatHistorySidebar onSelect={setActiveSessionId} />
+								</div>
+								<div className="bg-[#111827]/80 backdrop-blur-md p-4 rounded-2xl shadow-lg">
+									<BriefingWidget />
+								</div>
 							</div>
-							<div className="bg-[#161b22] rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
-								<h2 className="text-xl font-semibold mb-4">💬 Assistant</h2>
+							<div className="bg-[#111827]/80 backdrop-blur-md rounded-2xl p-4 flex flex-col min-h-0 overflow-hidden shadow-lg">
+								<h2 className="text-xl font-semibold mb-4 text-white">
+									💬 Assistant
+								</h2>
 								<div className="flex flex-col flex-1 min-h-0 gap-4">
 									<div className="flex-1 overflow-auto">
 										<ChatBox activeSessionId={activeSessionId} />

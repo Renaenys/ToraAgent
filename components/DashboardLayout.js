@@ -49,11 +49,9 @@ export default function DashboardLayout({ children }) {
 	const toggleSidebar = () => setCollapsed((prev) => !prev);
 
 	return (
-		<div className="relative flex min-h-screen bg-[#0d1117] text-white overflow-hidden">
-			{/* Sidebar */}
+		<div className="relative flex min-h-screen bg-gradient-to-br from-[#0d1117] to-[#1a1f2e] text-white overflow-hidden">
 			<div
-				className={`z-40 bg-[#161b22] min-h-screen shadow-lg fixed lg:static transition-all duration-300
-				${
+				className={`z-40 bg-[#161b22]/60 backdrop-blur-md min-h-screen shadow-xl fixed lg:static transition-all duration-300 ${
 					isMobile
 						? collapsed
 							? 'left-0 w-52'
@@ -61,8 +59,7 @@ export default function DashboardLayout({ children }) {
 						: collapsed
 						? 'w-14'
 						: 'w-52'
-				}
-			`}
+				}`}
 			>
 				<div className="flex items-center justify-between p-4">
 					{!collapsed || isMobile ? (
@@ -78,14 +75,13 @@ export default function DashboardLayout({ children }) {
 						/>
 					</button>
 				</div>
-
 				<nav className="flex flex-col gap-1 px-2">
 					{navItems.map((item) => (
 						<Link key={item.href} href={item.href}>
 							<div
 								className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors duration-200 ${
 									pathname === item.href
-										? 'bg-[#238636] text-white'
+										? 'bg-green-600 text-white'
 										: 'hover:bg-[#1f242c] text-gray-300'
 								}`}
 								onClick={() => isMobile && setCollapsed(false)}
@@ -106,10 +102,8 @@ export default function DashboardLayout({ children }) {
 				</nav>
 			</div>
 
-			{/* Main */}
 			<div className="flex flex-col flex-1 min-h-screen z-10">
-				{/* Topbar */}
-				<div className="px-4 py-3 flex items-center justify-between bg-[#0d1117] border-b border-gray-800 shadow-sm">
+				<div className="px-4 py-3 flex items-center justify-between bg-[#0d1117]/80 border-b border-gray-800 shadow-sm backdrop-blur">
 					<button
 						className="text-white hover:text-gray-400"
 						onClick={toggleSidebar}
@@ -117,7 +111,6 @@ export default function DashboardLayout({ children }) {
 						<FiMenu size={22} />
 					</button>
 				</div>
-
 				<main className="flex-1 overflow-y-auto p-4 w-full">{children}</main>
 			</div>
 		</div>

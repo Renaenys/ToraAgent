@@ -122,9 +122,8 @@ export default function CalendarWidget() {
 	};
 
 	return (
-		<div className="text-white h-auto">
+		<div className="bg-[#111827]/80 backdrop-blur-md rounded-2xl p-4 shadow-lg text-white h-full flex flex-col">
 			<ToastProvider />
-
 			<Calendar
 				onChange={setSelectedDate}
 				value={selectedDate}
@@ -133,11 +132,7 @@ export default function CalendarWidget() {
 				calendarType="gregory"
 				locale="en-US"
 			/>
-
-			<div
-				className="mt-4 bg-[#111827] p-4 rounded-xl shadow-md overflow-y-auto"
-				style={{ maxHeight: 'calc(10 * 60px)' }}
-			>
+			<div className="mt-4 p-4 rounded-xl bg-[#0f172a]/80 max-h-60 overflow-y-auto border border-gray-700">
 				<h3 className="text-lg font-bold mb-2">Events on {displayDate}</h3>
 				{loading ? (
 					<p className="text-gray-400">Loading events...</p>
@@ -148,7 +143,7 @@ export default function CalendarWidget() {
 						{dailyEvents.map((event, idx) => (
 							<li
 								key={idx}
-								className="p-2 bg-gray-800 rounded flex justify-between items-start"
+								className="p-2 bg-gray-800 rounded-xl flex justify-between items-start"
 							>
 								<div>
 									<p className="font-semibold">{event.summary}</p>
